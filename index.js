@@ -54,7 +54,7 @@ async function run() {
   const carCollection = client.db("rentwheels").collection("all_cars");
 
   try {
-    await client.connect();
+    // await client.connect();
 
     app.get('/latest-cars', async (req, res) => {
       const result = await carCollection.find().sort({ createdAt: -1 }).limit(6).toArray()
@@ -89,7 +89,7 @@ async function run() {
     })
 
     // specific car
-    app.get('/car-details/:id',  async (req, res) => {
+    app.get('/car-details/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await carCollection.findOne(query)
@@ -127,6 +127,14 @@ async function run() {
         return res.status(500).send({ success: false, message: err.message });
       }
     });
+
+    // delete car specific
+    app.delete('/delete-car/:id', verifyFirebase, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await carCollection.deleteOne(query);
+      res.send(result);
+    })
 
     console.log("Connected to MongoDB ✅");
   }
