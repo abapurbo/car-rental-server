@@ -52,9 +52,24 @@ const client = new MongoClient(uri, {
 async function run() {
 
   const carCollection = client.db("rentwheels").collection("all_cars");
+  const carBookings = client.db('rentwheels').collection('userCarBookings')
 
   try {
     // await client.connect();
+
+
+
+    //  scearch cars from carCollection database in mongodb
+    app.get('/cars', async (req, res) => {
+      const search = req.query.search || '';
+      try {
+        const cars = await carCollection.find({ car_name: { $regex: search, $options: 'i' } }).toArray();
+        res.send(cars)
+      }
+      catch (error) {
+        res.status(500).send({ success: false, message: "Not Found" });
+      }
+    })
 
     app.get('/latest-cars', async (req, res) => {
       const result = await carCollection.find().sort({ createdAt: -1 }).limit(6).toArray()
@@ -95,7 +110,86 @@ async function run() {
       const result = await carCollection.findOne(query)
       res.send(result);
     })
+    app.get('/form-data/:id', verifyFirebase, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await carCollection.findOne(query);
+      res.send(result)
+    })
 
+    // booking car
+    app.get('/booking-all-car', verifyFirebase, async (req, res) => {
+      const result = await carBookings.find().toArray();
+      res.send(result)
+    })
+
+    // POST /car-booking
+    app.post('/car-booking', verifyFirebase, async (req, res) => {
+      try {
+        const bookingInfo = req.body;
+        const carId = bookingInfo.car_id;
+
+        // Check if car exists
+        const car = await carCollection.findOne({ _id: new ObjectId(carId) });
+        console.log(car)
+        if (!car) {
+          return res.status(404).send({ success: false, message: 'Car not found' });
+        }
+
+        // Check if car is already booked
+        if (car.status === 'unavailable') {
+          return res.status(400).send({ success: false, message: 'This car is already booked by another user' });
+        }
+
+        // Insert booking
+        const newBooking = {
+          ...bookingInfo,
+          booking_date: new Date(),
+          status: 'confirmed',
+        };
+        const bookingResult = await carBookings.insertOne(newBooking);
+
+        // Update car status
+        const carUpdateResult = await carCollection.updateOne(
+          { _id: new ObjectId(carId) },
+          { $set: { status: 'unavailable' } }
+        );
+
+        res.send({
+          success: true,
+          message: 'Car booked successfully!',
+          bookingResult,
+          carUpdateResult,
+        });
+
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ success: false, message: 'Car booking failed!', error: error.message });
+      }
+    })
+
+
+    //   update car info
+    app.patch('/update-car/:id', verifyFirebase, async (req, res) => {
+      const id = req.params.id;
+      const carInfo = req.body;
+      const query = { _id: new ObjectId(id) }
+      const option = {}
+      const updateCar = {
+        $set: {
+          car_name: carInfo.car_name,
+          category: carInfo.category,
+          description: carInfo.description,
+          rent_price: carInfo.rent_price,
+          location: carInfo.location,
+          image: carInfo.image
+
+        }
+      }
+      const result = await carCollection.updateOne(query, updateCar, option);
+      res.send(result);
+
+    })
     // Create User (protected)
     app.post("/all-cars", verifyFirebase, async (req, res) => {
       try {
@@ -128,6 +222,8 @@ async function run() {
       }
     });
 
+
+
     // delete car specific
     app.delete('/delete-car/:id', verifyFirebase, async (req, res) => {
       const id = req.params.id;
@@ -139,11 +235,12 @@ async function run() {
     console.log("Connected to MongoDB ✅");
   }
   finally {
-    //  await client.close();
+
   }
 
 
 }
+
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
