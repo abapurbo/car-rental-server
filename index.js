@@ -174,7 +174,6 @@ async function run() {
         });
 
       } catch (error) {
-        console.error(error);
         res.status(500).send({ success: false, message: 'Car booking failed!', error: error.message });
       }
     })
