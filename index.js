@@ -119,14 +119,12 @@ async function run() {
     app.get('/booking-all-car', verifyFirebase, async (req, res) => {
       try {
         const email = req.query.email;
-        console.log(email)
         // unauthorized check
         if (email !== req.token_email) {
           return res.status(403).send({ message: "Forbidden Access" });
         }
         // find bookings for this user
         const result = await carBookings.find({ user_email: email }).toArray();
-        console.log(result)
         if (result.length === 0) {
           return res.status(404).send({ message: "No bookings found" });
         }
