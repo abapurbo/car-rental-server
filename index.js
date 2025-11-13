@@ -57,8 +57,6 @@ async function run() {
   try {
     // await client.connect();
 
-
-
     //  scearch cars from carCollection database in mongodb
     app.get('/cars', async (req, res) => {
       const search = req.query.search || '';
@@ -117,11 +115,26 @@ async function run() {
       res.send(result)
     })
 
-    // booking car
+    //  Get all bookings for a specific user
     app.get('/booking-all-car', verifyFirebase, async (req, res) => {
-      const result = await carBookings.find().toArray();
-      res.send(result)
-    })
+      try {
+        const email = req.query.email;
+        console.log(email)
+        // unauthorized check
+        if (email !== req.token_email) {
+          return res.status(403).send({ message: "Forbidden Access" });
+        }
+        // find bookings for this user
+        const result = await carBookings.find({ user_email: email }).toArray();
+        console.log(result)
+        if (result.length === 0) {
+          return res.status(404).send({ message: "No bookings found" });
+        }
+        res.status(200).send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Server error", error: error.message });
+      }
+    });
 
     // POST /car-booking
     app.post('/car-booking', verifyFirebase, async (req, res) => {
