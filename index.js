@@ -6,7 +6,6 @@ const cors = require("cors");
 const app = express();
 const port = process.env.PORT || 4000;
 const admin = require("firebase-admin");
-// Decode Firebase Service Account
 const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString("utf8");
 const serviceAccount = JSON.parse(decoded);
 
